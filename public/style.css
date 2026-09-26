@@ -1,0 +1,495 @@
+:root {
+  --u: 4px;
+  --safe-top: 0px; --safe-right: 0px; --safe-bottom: 0px; --safe-left: 0px;
+  --bg: #070b16;
+  --panel: rgba(19, 26, 44, 0.82);
+  --panel-2: rgba(255, 255, 255, 0.05);
+  --panel-2-hover: rgba(255, 255, 255, 0.09);
+  --border: #2a3657;
+  --border-soft: rgba(255, 255, 255, 0.08);
+  --text: #eef2ff;
+  --text-dim: #9fb0d8;
+  --accent: #3ee6d0;
+  --accent-2: #ffb547;
+  --danger: #ff5470;
+  --good: #5be49b;
+  --radius-lg: calc(var(--u) * 4);
+  --radius-md: calc(var(--u) * 2.2);
+  --ease: cubic-bezier(.2, .8, .2, 1);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+/* The [hidden] attribute must always win, even over classes like .row that
+   set their own `display`. Without this, an element with both class="row"
+   and hidden stays visible, because author CSS beats the UA [hidden] rule
+   at equal specificity. */
+[hidden] { display: none !important; }
+html, body {
+  margin: 0; padding: 0; width: 100%; height: 100%;
+  background: var(--bg); color: var(--text);
+  font-family: 'Trebuchet MS', 'Noto Sans Thai', system-ui, sans-serif;
+  overflow: hidden; overscroll-behavior: none; touch-action: none;
+  user-select: none; -webkit-user-select: none;
+  -webkit-font-smoothing: antialiased;
+}
+html { scroll-padding-top: var(--safe-top); }
+canvas { display: block; touch-action: none; }
+
+.app-root {
+  position: fixed; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  padding-top: var(--safe-top); padding-bottom: var(--safe-bottom);
+  padding-left: var(--safe-left); padding-right: var(--safe-right);
+  background:
+    radial-gradient(ellipse 60% 50% at 18% 12%, rgba(62,230,208,0.16), transparent 60%),
+    radial-gradient(ellipse 55% 45% at 88% 85%, rgba(255,181,71,0.12), transparent 60%),
+    radial-gradient(ellipse 90% 70% at 50% 100%, #0d1428, transparent 70%),
+    var(--bg);
+}
+.app-root::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .5;
+  background-image:
+    linear-gradient(rgba(120,150,220,0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(120,150,220,0.06) 1px, transparent 1px);
+  background-size: calc(var(--u) * 10) calc(var(--u) * 10);
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, black, transparent 75%);
+}
+.app-root::after {
+  content: "ARENA CORE"; position: absolute; left: 50%; top: 50%;
+  transform: translate(-50%, -50%); white-space: nowrap; pointer-events: none;
+  font-weight: 900; letter-spacing: calc(var(--u) * 1); font-size: min(22vw, calc(var(--u) * 90));
+  color: transparent; -webkit-text-stroke: 1px rgba(255,255,255,0.05);
+  background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0));
+  -webkit-background-clip: text; background-clip: text;
+}
+/* Only decorative in the pre-match menus — never show it over the actual arena/map */
+.app-root:has(> .game-canvas)::after,
+.app-root:has(> .game-canvas)::before {
+  display: none;
+}
+
+/* ---------------------------------------------------------------- generic */
+
+.btn {
+  font: inherit; font-weight: 700; font-size: calc(var(--u) * 3.4);
+  color: var(--text); background: var(--panel-2); border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md); padding: calc(var(--u) * 2.4) calc(var(--u) * 4.2);
+  cursor: pointer; transition: transform .12s var(--ease), background .15s ease, box-shadow .15s ease, filter .15s ease;
+  box-shadow: 0 calc(var(--u) * 0.6) 0 rgba(0,0,0,0.18);
+  outline: none;
+}
+/* :hover only for devices that actually have a mouse — otherwise a tap on touch
+   screens leaves the hover style "stuck" on until the user taps something else,
+   which reads as the UI being frozen/unresponsive. */
+@media (hover: hover) and (pointer: fine) {
+  .btn:hover { background: var(--panel-2-hover); }
+}
+.btn:active { transform: translateY(2px) scale(0.98); box-shadow: 0 0 0 rgba(0,0,0,0.18); }
+/* Tapped buttons stay focused on mobile with no visible reason; only show a
+   focus ring for keyboard/switch navigation, where it's actually needed. */
+.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.btn:disabled { opacity: 0.38; cursor: not-allowed; filter: grayscale(.3); }
+.btn--primary {
+  background: linear-gradient(180deg, #4ff2dd, var(--accent)); color: #06231f; border-color: transparent;
+  box-shadow: 0 calc(var(--u) * 0.6) 0 #1f8f80, 0 calc(var(--u) * 1.5) calc(var(--u) * 3) rgba(62,230,208,0.25);
+}
+@media (hover: hover) and (pointer: fine) {
+  .btn--primary:hover { filter: brightness(1.06); }
+}
+.btn--accent {
+  background: linear-gradient(180deg, #ffc768, var(--accent-2)); color: #2b1a00; border-color: transparent;
+  box-shadow: 0 calc(var(--u) * 0.6) 0 #b3781f, 0 calc(var(--u) * 1.5) calc(var(--u) * 3) rgba(255,181,71,0.25);
+}
+/* Leave-room is a destructive/exit action and previously had no border or fill at
+   all, so it read as plain dim text rather than a tappable button. Give it a
+   visible outline up front and a danger tint on press so it's unmistakable. */
+.btn--ghost {
+  background: transparent; color: var(--text-dim);
+  box-shadow: none; border: 1px solid var(--border-soft);
+}
+@media (hover: hover) and (pointer: fine) {
+  .btn--ghost:hover { color: var(--danger); background: rgba(255,84,112,0.08); border-color: rgba(255,84,112,0.35); }
+}
+.btn--ghost:active { color: var(--danger); background: rgba(255,84,112,0.12); border-color: rgba(255,84,112,0.4); }
+.btn--big { font-size: calc(var(--u) * 4.2); padding: calc(var(--u) * 3) calc(var(--u) * 6); width: 100%; }
+
+.text-input {
+  font: inherit; font-size: calc(var(--u) * 3.4); color: var(--text);
+  background: rgba(6,10,20,0.5); border: 1px solid var(--border-soft); border-radius: var(--radius-md);
+  padding: calc(var(--u) * 2.2) calc(var(--u) * 2.6); outline: none; width: 100%;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+.text-input--code { text-transform: uppercase; letter-spacing: .3em; text-align: center; width: calc(var(--u) * 22); flex: none; font-weight: 700; }
+.text-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(62,230,208,0.18); }
+.text-input::placeholder { color: var(--text-dim); opacity: .7; }
+
+.row { display: flex; gap: calc(var(--u) * 2); align-items: center; }
+.field-label {
+  font-size: calc(var(--u) * 2.4); color: var(--text-dim); margin-top: calc(var(--u) * 2);
+  text-transform: uppercase; letter-spacing: .08em; font-weight: 700;
+}
+.hint { font-size: calc(var(--u) * 2.6); color: var(--text-dim); text-align: center; white-space: pre-line; }
+
+.overlay {
+  position: fixed; inset: 0; z-index: 50; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: calc(var(--u) * 2);
+  background: rgba(6, 9, 18, 0.92); backdrop-filter: blur(6px); text-align: center; padding: calc(var(--u) * 4);
+}
+
+/* ---------------------------------------------------------------- screens (connect / lobby / room) */
+
+@keyframes screenIn {
+  from { opacity: 0; transform: translateY(calc(var(--u) * 3)) scale(.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.screen {
+  width: min(92vw, calc(var(--u) * 150));
+  max-height: 92vh; overflow-y: auto;
+  display: flex; flex-direction: column; gap: calc(var(--u) * 2.6);
+  background: var(--panel); border: 1px solid var(--border-soft); border-radius: var(--radius-lg);
+  padding: calc(var(--u) * 5) calc(var(--u) * 4.5);
+  backdrop-filter: blur(18px);
+  box-shadow: 0 calc(var(--u) * 6) calc(var(--u) * 12) rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.03) inset;
+  animation: screenIn .32s var(--ease);
+}
+.screen::-webkit-scrollbar { width: 6px; }
+.screen::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+.title {
+  font-size: calc(var(--u) * 5.8); font-weight: 800; letter-spacing: .01em; line-height: 1.1;
+  background: linear-gradient(135deg, #ffffff, var(--accent) 120%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.tagline { color: var(--text-dim); margin-top: calc(var(--u) * -1.8); font-size: calc(var(--u) * 2.8); }
+.status { font-size: calc(var(--u) * 2.8); color: var(--accent); display: flex; align-items: center; gap: calc(var(--u) * 1.4); }
+.status::before {
+  content: ""; width: calc(var(--u) * 1.6); height: calc(var(--u) * 1.6); border-radius: 50%;
+  background: var(--accent); box-shadow: 0 0 0 0 rgba(62,230,208,0.6);
+  animation: statusPulse 1.4s ease-out infinite;
+}
+@keyframes statusPulse {
+  0% { box-shadow: 0 0 0 0 rgba(62,230,208,0.55); }
+  70% { box-shadow: 0 0 0 8px rgba(62,230,208,0); }
+  100% { box-shadow: 0 0 0 0 rgba(62,230,208,0); }
+}
+
+.char-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(calc(var(--u) * 30), 1fr)); gap: calc(var(--u) * 2.2); }
+.char-card {
+  position: relative; display: flex; flex-direction: column; gap: calc(var(--u) * 1);
+  background: var(--panel-2); border: 2px solid var(--border-soft); border-radius: var(--radius-md);
+  padding: calc(var(--u) * 2.6); text-align: left; cursor: pointer; color: var(--text);
+  transition: transform .15s var(--ease), border-color .15s ease, background .15s ease, box-shadow .15s ease;
+}
+@media (hover: hover) and (pointer: fine) {
+  .char-card:hover { transform: translateY(-2px); background: var(--panel-2-hover); }
+}
+.char-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.char-card--selected {
+  border-color: var(--char-color, var(--accent));
+  background: color-mix(in srgb, var(--char-color, var(--accent)) 14%, var(--panel-2));
+  box-shadow: 0 0 0 1px var(--char-color, var(--accent)) inset, 0 calc(var(--u) * 1) calc(var(--u) * 4) color-mix(in srgb, var(--char-color, var(--accent)) 35%, transparent);
+}
+.char-card--selected::after {
+  content: "\2713"; position: absolute; top: calc(var(--u) * 1.6); right: calc(var(--u) * 1.6);
+  width: calc(var(--u) * 4); height: calc(var(--u) * 4); border-radius: 50%;
+  background: var(--char-color, var(--accent)); color: #06231f; font-weight: 800; font-size: calc(var(--u) * 2.4);
+  display: flex; align-items: center; justify-content: center;
+}
+.char-preview {
+  width: calc(var(--u) * 13); height: calc(var(--u) * 13); align-self: center;
+  filter: drop-shadow(0 calc(var(--u) * 0.8) calc(var(--u) * 1.6) color-mix(in srgb, var(--char-color, var(--accent)) 50%, transparent));
+}
+.char-preview svg { width: 100%; height: 100%; display: block; }
+.char-name { font-weight: 700; font-size: calc(var(--u) * 3.2); text-align: center; }
+.char-desc { font-size: calc(var(--u) * 2.4); color: var(--text-dim); line-height: 1.4; text-align: center; }
+.char-skills { display: flex; flex-direction: column; gap: calc(var(--u) * 0.8); margin-top: calc(var(--u) * 0.6); }
+.char-skill {
+  display: flex; align-items: center; gap: calc(var(--u) * 1.4);
+  background: rgba(0,0,0,0.18); border: 1px solid var(--border-soft); border-radius: var(--radius-sm, 8px);
+  padding: calc(var(--u) * 1) calc(var(--u) * 1.4);
+}
+.char-skill-icon {
+  flex: none; width: calc(var(--u) * 5); height: calc(var(--u) * 5); border-radius: 50%;
+  background: color-mix(in srgb, var(--char-color, var(--accent)) 30%, var(--panel-2));
+  border: 1px solid color-mix(in srgb, var(--char-color, var(--accent)) 60%, transparent);
+  display: flex; align-items: center; justify-content: center;
+  font-size: calc(var(--u) * 2.4); line-height: 1;
+}
+.char-skill-text { display: flex; flex-direction: column; min-width: 0; }
+.char-skill-name { font-weight: 700; font-size: calc(var(--u) * 2.4); }
+.char-skill-meta { font-size: calc(var(--u) * 2); color: var(--text-dim); }
+
+.room-list {
+  display: flex; flex-direction: column; gap: calc(var(--u) * 1.4);
+  overflow-y: auto; padding: calc(var(--u) * 1.6); padding-right: calc(var(--u) * 2);
+  background: rgba(6,10,20,0.35); border: 1px solid var(--border-soft); border-radius: var(--radius-md);
+}
+.room-list::-webkit-scrollbar { width: 6px; }
+.room-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+.room-row {
+  display: flex; justify-content: space-between; align-items: center; gap: calc(var(--u) * 2);
+  background: var(--panel-2); border: 1px solid var(--border-soft); border-left: 3px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: calc(var(--u) * 2.2) calc(var(--u) * 2.6); color: var(--text); font-size: calc(var(--u) * 3);
+  cursor: pointer; transition: transform .12s var(--ease), background .15s ease, border-color .15s ease;
+}
+@media (hover: hover) and (pointer: fine) {
+  .room-row:not(:disabled):hover { transform: translateX(2px); background: var(--panel-2-hover); border-left-color: var(--accent); }
+}
+.room-row:not(:disabled):active { transform: scale(.99); }
+.room-row:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.room-row:disabled { opacity: .4; cursor: not-allowed; }
+.room-code { font-weight: 800; letter-spacing: .2em; }
+.room-players { color: var(--text-dim); font-variant-numeric: tabular-nums; }
+.room-state { font-size: calc(var(--u) * 2.2); font-weight: 700; padding: .3em .8em; border-radius: 1em; background: var(--border); }
+.room-state--waiting { background: rgba(91,228,155,0.18); color: var(--good); }
+
+/* lobby-screen: wide two-column layout so the room list doesn't float alone in a narrow card */
+.lobby-screen {
+  width: min(94vw, calc(var(--u) * 210));
+}
+@media (min-width: 720px) {
+  .lobby-screen {
+    display: grid;
+    grid-template-columns: minmax(calc(var(--u) * 58), calc(var(--u) * 72)) 1fr;
+    grid-template-rows: auto auto 1fr;
+    grid-template-areas: "title title" "actions list" "join list";
+    column-gap: calc(var(--u) * 5); row-gap: calc(var(--u) * 2);
+    height: min(72vh, calc(var(--u) * 130));
+  }
+  .lobby-screen > .title { grid-area: title; }
+  .lobby-screen .lobby-actions {
+    grid-area: actions; align-self: start; flex-direction: column; align-items: stretch;
+    gap: calc(var(--u) * 1.6);
+  }
+  .lobby-screen .lobby-actions .btn { width: 100%; }
+  .lobby-screen .lobby-join { grid-area: join; align-self: start; }
+  .lobby-screen .room-list { grid-area: list; max-height: none; height: 100%; }
+}
+
+/* join-by-code block: code input + join button, with a password row and an
+   error slot that only appear once the server tells us they're needed. */
+.lobby-join {
+  display: flex; flex-direction: column; gap: calc(var(--u) * 1.6);
+  background: rgba(6,10,20,0.35); border: 1px solid var(--border-soft); border-radius: var(--radius-md);
+  padding: calc(var(--u) * 2);
+}
+.lobby-join .row { flex-wrap: wrap; }
+.lobby-join::before {
+  content: "มีรหัสห้องอยู่แล้ว?";
+  font-size: calc(var(--u) * 2.2); color: var(--text-dim); text-transform: uppercase;
+  letter-spacing: .08em; font-weight: 700;
+}
+.lobby-join__password { animation: screenIn .22s var(--ease); }
+.join-error {
+  font-size: calc(var(--u) * 2.6); color: var(--danger); line-height: 1.4;
+}
+
+/* ---------------------------------------------------------------- create-room screen */
+
+.create-room-screen { width: min(92vw, calc(var(--u) * 120)); }
+.duration-stepper {
+  display: flex; align-items: center; justify-content: center; gap: calc(var(--u) * 3);
+}
+.duration-btn {
+  width: calc(var(--u) * 10); height: calc(var(--u) * 10); border-radius: 50%;
+  padding: 0; font-size: calc(var(--u) * 4.5); line-height: 1; flex: none;
+}
+.duration-value {
+  min-width: calc(var(--u) * 20); text-align: center; font-weight: 700;
+  font-size: calc(var(--u) * 3.6); font-variant-numeric: tabular-nums;
+}
+.empty {
+  display: flex; flex-direction: column; align-items: center; gap: calc(var(--u) * 1.2);
+  color: var(--text-dim); font-size: calc(var(--u) * 3); text-align: center;
+  padding: calc(var(--u) * 5) calc(var(--u) * 4); border: 1px dashed var(--border-soft); border-radius: var(--radius-md);
+}
+.empty::before {
+  content: "🎮"; font-size: calc(var(--u) * 7); opacity: .5; filter: grayscale(1);
+}
+
+.roster { display: flex; flex-direction: column; gap: calc(var(--u) * 0.6); max-height: 40vh; overflow-y: auto; }
+.roster-row {
+  display: flex; align-items: center; gap: calc(var(--u) * 1.8); font-size: calc(var(--u) * 3);
+  padding: calc(var(--u) * 1.6) calc(var(--u) * 1.8); border-radius: var(--radius-md);
+  background: var(--panel-2); border: 1px solid transparent;
+}
+.roster-swatch {
+  width: calc(var(--u) * 3); height: calc(var(--u) * 3); border-radius: 50%; flex: none;
+  box-shadow: 0 0 0 3px rgba(255,255,255,0.06);
+}
+.roster-name { flex: 1; font-weight: 600; }
+.tag { font-size: calc(var(--u) * 2); font-weight: 700; padding: .2em .7em; border-radius: 1em; }
+.tag--host { background: rgba(255,181,71,0.18); color: var(--accent-2); }
+.tag--ready { background: rgba(91,228,155,0.18); color: var(--good); }
+
+/* ---------------------------------------------------------------- HUD */
+
+.hud { position: fixed; inset: 0; z-index: 20; pointer-events: none;
+  padding-top: var(--safe-top); padding-bottom: var(--safe-bottom);
+  padding-left: var(--safe-left); padding-right: var(--safe-right); }
+
+/* Extra clearance reserved at the two TOP corners only, on top of the normal
+ * device safe-area. Some hosting shells (native app wrappers, embedded
+ * webviews, browser "add to home screen" chrome, etc.) float their own
+ * close/fullscreen buttons over those exact corners; the game has no way to
+ * detect them, so we just keep our own HUD from ever sitting flush against
+ * the edge there. Bottom corners are unaffected. */
+:root { --hud-corner-safe: calc(var(--u) * 18); }
+
+.hud-top {
+  position: absolute;
+  /* Corner-safe only needs to apply horizontally here: keeping hp-bar/score-list
+   * clear of the floating corner buttons on the X axis already keeps them out
+   * from under those buttons, since the buttons sit in the corner. Adding the
+   * same large offset to `top` too was pushing the whole row (including the
+   * timer, which isn't anywhere near a corner) much lower than necessary. */
+  top: calc(var(--u) * 1.5 + var(--safe-top));
+  left: calc(var(--u) * 1.5 + var(--hud-corner-safe));
+  right: calc(var(--u) * 1.5 + var(--hud-corner-safe));
+  display: flex; align-items: center; gap: calc(var(--u) * 2);
+}
+.hp-bar {
+  position: relative; width: calc(var(--u) * 34); height: calc(var(--u) * 3.4);
+  background: rgba(0,0,0,0.5); border: 1px solid var(--border); border-radius: calc(var(--u) * 1);
+  overflow: hidden; flex: none;
+}
+.hp-fill { height: 100%; width: 100%; background: linear-gradient(90deg, var(--good), #3ee6d0); transition: width .12s ease; }
+.hp-fill--low { background: linear-gradient(90deg, var(--danger), var(--accent-2)); }
+.hp-text {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  font-size: calc(var(--u) * 2); font-weight: 700; text-shadow: 0 1px 2px rgba(0,0,0,.8);
+}
+.match-timer { font-variant-numeric: tabular-nums; font-size: calc(var(--u) * 3.4); font-weight: 700; min-width: 3em; text-align: center; }
+.score-list { margin-left: auto; display: flex; flex-direction: column; gap: 2px; align-items: flex-end; }
+.score-row { display: flex; align-items: baseline; gap: calc(var(--u) * 1.2); font-size: calc(var(--u) * 2.2); color: var(--text-dim); }
+.score-row--me { color: var(--accent); font-weight: 700; }
+.score-ping { font-size: calc(var(--u) * 1.6); font-weight: 400; opacity: .65; }
+
+.kill-feed {
+  position: absolute; top: calc(var(--u) * 8 + var(--safe-top)); right: calc(var(--u) * 1.5 + var(--hud-corner-safe));
+  display: flex; flex-direction: column; align-items: flex-end; gap: calc(var(--u) * 0.6);
+  font-size: calc(var(--u) * 2.2);
+}
+.kill-row { background: rgba(0,0,0,0.45); padding: .2em .7em; border-radius: 1em; color: var(--text-dim); }
+.kill-row--mine { color: var(--accent-2); font-weight: 700; }
+
+.state-banner {
+  position: absolute; top: 30%; left: 50%; transform: translate(-50%, -50%);
+  font-size: calc(var(--u) * 6); font-weight: 800; letter-spacing: .04em;
+  text-shadow: 0 2px 8px rgba(0,0,0,.6); display: none; align-items: center; justify-content: center;
+}
+
+.respawn-overlay {
+  position: absolute; inset: 0; display: none; align-items: center; justify-content: center;
+  background: rgba(255,20,40,0.12);
+}
+.respawn-text { font-size: calc(var(--u) * 4.2); font-weight: 700; text-align: center; white-space: pre-line; text-shadow: 0 2px 6px rgba(0,0,0,.7); }
+
+.char-select-overlay {
+  position: absolute; inset: 0; display: none; align-items: center; justify-content: center;
+  background: rgba(6,10,20,0.72); backdrop-filter: blur(6px); z-index: 5; padding: calc(var(--u) * 3);
+  /* .hud (the parent) sets pointer-events:none so joystick/canvas clicks pass through it;
+     this overlay is a modal UI, so it (and everything inside it) must opt back in, or the
+     character cards and spawn button are visible but completely unclickable. */
+  pointer-events: auto;
+}
+.char-select-overlay--dead { background: rgba(40,6,10,0.72); }
+.char-select-panel {
+  display: flex; flex-direction: column; gap: calc(var(--u) * 2.4);
+  background: var(--panel); border: 1px solid var(--border-soft); border-radius: var(--radius-lg);
+  padding: calc(var(--u) * 3.5) calc(var(--u) * 3.5);
+  max-width: calc(var(--u) * 110); width: 100%; max-height: 92%; overflow-y: auto;
+  box-shadow: 0 calc(var(--u) * 6) calc(var(--u) * 12) rgba(0,0,0,0.5);
+}
+.char-select-title { font-size: calc(var(--u) * 3.6); font-weight: 800; text-align: center; }
+
+/* ---------------------------------------------------------------- controls */
+
+.stick-zone { position: absolute; left: 0; bottom: 0; width: 42%; height: 62%; pointer-events: auto; }
+.stick-root { position: absolute; width: 0; height: 0; pointer-events: none; }
+.stick-base {
+  position: absolute; width: calc(var(--u) * 22); height: calc(var(--u) * 22);
+  margin-left: calc(var(--u) * -11); margin-top: calc(var(--u) * -11);
+  border-radius: 50%; background: rgba(255,255,255,0.06); border: 2px solid rgba(255,255,255,0.18);
+}
+.stick-knob {
+  position: absolute; width: calc(var(--u) * 10); height: calc(var(--u) * 10);
+  margin-left: calc(var(--u) * -5); margin-top: calc(var(--u) * -5);
+  border-radius: 50%; background: rgba(255,255,255,0.35); border: 2px solid rgba(255,255,255,0.6);
+}
+
+.controls-zone {
+  position: absolute; right: calc(var(--u) * 2); bottom: calc(var(--u) * 2 + var(--safe-bottom));
+  display: flex; align-items: flex-end; gap: calc(var(--u) * 2.5); pointer-events: auto;
+}
+.ability-row { display: flex; align-items: flex-end; gap: calc(var(--u) * 2); }
+.ability-btn {
+  position: relative; width: calc(var(--u) * 12); height: calc(var(--u) * 12); border-radius: 50%;
+  background: rgba(20,26,48,0.75); border: 2px solid var(--border); color: var(--text);
+  display: flex; align-items: center; justify-content: center; padding: 0; cursor: pointer;
+}
+.ability-btn--primary { width: calc(var(--u) * 15); height: calc(var(--u) * 15); background: rgba(62,230,208,0.18); border-color: var(--accent); }
+.ability-btn:active { transform: scale(0.92); }
+.ability-btn--cooling { opacity: .75; }
+.ability-icon { font-weight: 800; font-size: calc(var(--u) * 4); }
+.ability-ring { position: absolute; inset: 0; border-radius: 50%; pointer-events: none; }
+.jump-btn {
+  width: calc(var(--u) * 10); height: calc(var(--u) * 10); border-radius: 50%;
+  background: rgba(20,26,48,0.75); border: 2px solid var(--border); color: var(--text);
+  font-size: calc(var(--u) * 4); display: flex; align-items: center; justify-content: center; cursor: pointer;
+}
+.jump-btn:active { transform: scale(0.92); }
+
+/* ---------------------------------------------------------------- rotate prompt */
+
+.rotate-prompt { z-index: 100; }
+.rotate-icon { font-size: calc(var(--u) * 12); animation: spin 1.6s ease-in-out infinite; }
+.rotate-title { font-size: calc(var(--u) * 4); font-weight: 700; }
+.rotate-sub { font-size: calc(var(--u) * 2.6); color: var(--text-dim); }
+@keyframes spin { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(-90deg); } }
+
+/* ---------------------------------------------------------------- results */
+
+.results-screen { z-index: 40; }
+.results-list { display: flex; flex-direction: column; gap: calc(var(--u) * 1.4); width: min(80vw, calc(var(--u) * 100)); }
+.results-row {
+  display: flex; align-items: center; gap: calc(var(--u) * 2);
+  background: var(--panel-2); border: 1px solid var(--border-soft); border-radius: var(--radius-md);
+  padding: calc(var(--u) * 2) calc(var(--u) * 2.6); font-size: calc(var(--u) * 3);
+  animation: screenIn .28s var(--ease) backwards;
+}
+.results-row--me { border-color: var(--accent); }
+.results-row--winner { background: rgba(255,181,71,0.12); border-color: var(--accent-2); }
+.results-swatch { width: calc(var(--u) * 2.6); height: calc(var(--u) * 2.6); border-radius: 50%; flex: none; box-shadow: 0 0 0 3px rgba(255,255,255,0.06); }
+.results-name { flex: 1; font-weight: 700; text-align: left; }
+.results-kd { color: var(--text-dim); font-size: calc(var(--u) * 2.4); }
+
+/* ---------------------------------------------------------------- fullscreen toggle */
+
+.fs-toggle {
+  position: fixed; z-index: 300;
+  top: calc(var(--safe-top) + var(--u) * 2); right: calc(var(--safe-right) + var(--u) * 2);
+  width: calc(var(--u) * 9); height: calc(var(--u) * 9); border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; padding: 0;
+  background: rgba(19,26,44,0.75); border: 1px solid var(--border-soft); color: var(--text);
+  font-size: calc(var(--u) * 4); line-height: 1; cursor: pointer;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 calc(var(--u) * 0.6) calc(var(--u) * 1.5) rgba(0,0,0,0.35);
+  transition: transform .12s var(--ease), background .15s ease;
+}
+@media (hover: hover) and (pointer: fine) {
+  .fs-toggle:hover { background: rgba(19,26,44,0.95); }
+}
+.fs-toggle:active { transform: scale(.9); }
+.fs-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ---------------------------------------------------------------- device buckets */
+
+html[data-orientation="portrait"] .hud,
+html[data-orientation="portrait"] .game-canvas { visibility: hidden; }
+
+html[data-bucket="tablet"] .controls-zone { gap: calc(var(--u) * 3.5); }
+html[data-bucket="ultra"] .stick-zone { width: 38%; }

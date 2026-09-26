@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no, shrink-to-fit=no" />
+<meta name="theme-color" content="#0a0e1a" />
+<title>Arena Core</title>
+<link rel="manifest" href="manifest.webmanifest" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='45' fill='%233ee6d0'/%3E%3C/svg%3E" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<button id="fsToggle" class="fs-toggle" type="button" aria-label="เต็มจอ">⛶</button>
+<script src="config.js"></script>
+<script>
+(function () {
+  var opts = { passive: false };
+
+  // Safari pinch-zoom gesture events (iOS trackpad + touch pinch)
+  ["gesturestart", "gesturechange", "gestureend"].forEach(function (t) {
+    document.addEventListener(t, function (e) { e.preventDefault(); }, opts);
+  });
+
+  // Two-finger pinch on browsers without gesture events (Chrome/Firefox/Android)
+  document.addEventListener("touchmove", function (e) {
+    if (e.touches.length > 1) e.preventDefault();
+  }, opts);
+
+  // Double-tap-to-zoom (iOS Safari can still trigger this even with touch-action: none)
+  var lastTouchEnd = 0;
+  document.addEventListener("touchend", function (e) {
+    var now = Date.now();
+    if (now - lastTouchEnd <= 350) e.preventDefault();
+    lastTouchEnd = now;
+  }, opts);
+  document.addEventListener("dblclick", function (e) { e.preventDefault(); }, opts);
+
+  // Trackpad pinch-zoom on desktop Chrome/Edge/Firefox is delivered as ctrl+wheel
+  document.addEventListener("wheel", function (e) {
+    if (e.ctrlKey) e.preventDefault();
+  }, opts);
+
+  // Keyboard zoom shortcuts: Ctrl/Cmd +, -, =, 0
+  window.addEventListener("keydown", function (e) {
+    if ((e.ctrlKey || e.metaKey) && ["+", "-", "=", "_", "0"].indexOf(e.key) !== -1) {
+      e.preventDefault();
+    }
+  }, opts);
+
+  // -------- Fullscreen (hide the browser's tab/address bar chrome) --------
+  function isFullscreen() {
+    return !!(document.fullscreenElement || document.webkitFullscreenElement);
+  }
+  function requestFS() {
+    var el = document.documentElement;
+    var req = el.requestFullscreen || el.webkitRequestFullscreen;
+    if (!req) return;
+    try {
+      var p = req.call(el);
+      if (p && p.catch) p.catch(function () {});
+    } catch (e) {}
+  }
+  function exitFS() {
+    var exit = document.exitFullscreen || document.webkitExitFullscreen;
+    if (!exit) return;
+    try {
+      var p = exit.call(document);
+      if (p && p.catch) p.catch(function () {});
+    } catch (e) {}
+  }
+
+  var fsBtn = document.getElementById("fsToggle");
+  function updateFsBtn() {
+    if (!fsBtn) return;
+    var fs = isFullscreen();
+    fsBtn.textContent = fs ? "⤡" : "⛶";
+    fsBtn.setAttribute("aria-label", fs ? "ออกจากเต็มจอ" : "เต็มจอ");
+  }
+  if (fsBtn) {
+    fsBtn.addEventListener("click", function () {
+      if (isFullscreen()) exitFS(); else requestFS();
+    });
+  }
+  document.addEventListener("fullscreenchange", updateFsBtn);
+  document.addEventListener("webkitfullscreenchange", updateFsBtn);
+  updateFsBtn();
+
+  // Best effort: also go fullscreen automatically on the player's very first tap,
+  // so most people never have to find the button at all.
+  var autoFsDone = false;
+  document.addEventListener("pointerdown", function (e) {
+    if (autoFsDone || isFullscreen()) return;
+    if (fsBtn && (e.target === fsBtn || fsBtn.contains(e.target))) return;
+    autoFsDone = true;
+    requestFS();
+  }, { once: true, passive: true });
+})();
+</script>
+<script type="module" src="app.js"></script>
+</body>
+</html>
